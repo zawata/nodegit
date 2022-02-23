@@ -41,6 +41,7 @@
 *.log
 .DS_STORE
 .idea
+.clangd
 
 .vscode
 jsconfig.json
