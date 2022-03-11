@@ -176,14 +176,6 @@
           }
         ],
         [
-          "OS.endswith('bsd') or (<(is_electron) == 1 and OS=='linux') or <(is_IBMi) == 1", {
-            "libraries": [
-              "-lcrypto",
-              "-lssl"
-            ],
-          }
-        ],
-        [
           "<(is_IBMi) == 1", {
             "include_dirs": [
               "/QOpenSys/pkgs/include"

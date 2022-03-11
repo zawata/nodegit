@@ -22,7 +22,7 @@
         "GIT_SSH_MEMORY_CREDENTIALS",
         "LIBGIT2_NO_FEATURES_H",
         "GIT_SHA1_COLLISIONDETECT",
-        # "GIT_USE_NSEC", We've been shipping without NSEC for awhile
+        # "GIT_USE_NSEC", We've been shipping without NSEC for a while
         # Turning NSEC on should be left up to application maintainer
         # There may be negative performance impacts using nodegit with
         # NSEC turned on in a repository that was cloned with nodegit
@@ -258,6 +258,10 @@
         "libgit2/src/streams/mbedtls.h",
         "libgit2/src/streams/openssl.c",
         "libgit2/src/streams/openssl.h",
+        "libgit2/src/streams/openssl_dynamic.c",
+        "libgit2/src/streams/openssl_dynamic.h",
+        "libgit2/src/streams/openssl_legacy.c",
+        "libgit2/src/streams/openssl_legacy.h",
         "libgit2/src/streams/registry.c",
         "libgit2/src/streams/registry.h",
         "libgit2/src/strmap.c",
@@ -403,8 +407,15 @@
           ]
         }],
         ["OS=='linux' or OS.endswith('bsd') or <(is_IBMi) == 1", {
+          # with dynamic linking libgit2 actually exports a bunch of global function pointers that match the names of openssl symbols
+          # which are then overridden by the actual symbols from node when nodegit is loaded causing a segfault when we dlopen libssl and try to save it's symbols
+          # -fvisibility=hidden only appies to the visibility of the symbols at link time and won't affect compiling against the shared object
+          "cflags": [
+            "-fvisibility=hidden"
+          ],
           "defines": [
             "GIT_OPENSSL",
+            "GIT_OPENSSL_DYNAMIC",
             "GIT_USE_FUTIMENS",
             "GIT_USE_STAT_MTIM"
           ]
@@ -698,7 +709,8 @@
             "libgit2/deps/ntlmclient/crypt_openssl.h"
           ],
           "defines": [
-            "CRYPT_OPENSSL"
+            "CRYPT_OPENSSL",
+            "CRYPT_OPENSSL_DYNAMIC"
           ]
         }]
       ]
