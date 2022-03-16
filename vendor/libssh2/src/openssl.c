@@ -689,21 +689,21 @@ _libssh2_EVP_aes_256_ctr(void)
 
 void _libssh2_openssl_crypto_init(void)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(LIBRESSL_VERSION_NUMBER)
+    if (OpenSSL_version_num() >= 0x10100000L) {
 #ifndef OPENSSL_NO_ENGINE
-    ENGINE_load_builtin_engines();
-    ENGINE_register_all_complete();
+        ENGINE_load_builtin_engines();
+        ENGINE_register_all_complete();
 #endif
-#else
-    OpenSSL_add_all_algorithms();
-    OpenSSL_add_all_ciphers();
-    OpenSSL_add_all_digests();
+    }
+    else {
+        OpenSSL_add_all_algorithms();
+        OpenSSL_add_all_ciphers();
+        OpenSSL_add_all_digests();
 #ifndef OPENSSL_NO_ENGINE
-    ENGINE_load_builtin_engines();
-    ENGINE_register_all_complete();
+        ENGINE_load_builtin_engines();
+        ENGINE_register_all_complete();
 #endif
-#endif
+    }
 #if LIBSSH2_AES_CTR && !defined(HAVE_EVP_AES_128_CTR)
     aes_128_ctr_cipher = (EVP_CIPHER *) _libssh2_EVP_aes_128_ctr();
     aes_192_ctr_cipher = (EVP_CIPHER *) _libssh2_EVP_aes_192_ctr();

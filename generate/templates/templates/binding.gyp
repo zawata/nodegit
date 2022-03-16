@@ -55,6 +55,7 @@
         "src/thread_pool.cc",
         "src/nodegit.cc",
         "src/init_ssh2.cc",
+        "src/init_openssl.cc",
         "src/promise_completion.cc",
         "src/wrapper.cc",
         "src/functions/copy.cc",
