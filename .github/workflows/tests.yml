@@ -177,6 +177,10 @@ jobs:
           check-latest: true
           node-arch: ${{ matrix.arch }}
 
+      -name: Take Ownership
+      run: /
+        takeown /f . /r
+
       - name: Install
         run: npm install
 

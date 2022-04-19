@@ -62,12 +62,6 @@ before(function() {
       return fse.writeFile(local("home", ".gitconfig"),
         "[user]\n  name = John Doe\n  email = johndoe@example.com");
     })
-    .then(function() {
-      return exec(`git config --global --add safe.directory ${workdirPath}`);
-    })
-    .then(function() {
-      return exec(`git config --global --add safe.directory ${constWorkdirPath}`);
-    });
 });
 
 beforeEach(function() {
