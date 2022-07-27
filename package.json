@@ -1,7 +1,7 @@
 {
   "name": "nodegit",
   "description": "Node.js libgit2 asynchronous native bindings",
-  "version": "0.28.0-alpha.18",
+  "version": "0.28.0-gktempalpha.18",
   "homepage": "http://nodegit.org",
   "keywords": [
     "libgit2",
@@ -64,7 +64,7 @@
   "binary": {
     "module_name": "nodegit",
     "module_path": "./build/Release/",
-    "host": "https://axonodegit.s3.amazonaws.com/nodegit/nodegit/"
+    "host": "https://axonodegit-gk.s3.amazonaws.com/axosoft/nodegit/"
   },
   "scripts": {
     "cov": "npm run cppcov && npm run filtercov && npm run mergecov",
