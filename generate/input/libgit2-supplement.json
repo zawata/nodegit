@@ -1051,6 +1051,32 @@
           "type": "int"
         },
         "group": "stash"
+      },
+      "git_tree_get_all_filepaths": {
+        "args": [
+          {
+            "name": "tree",
+            "type": "git_tree *"
+          },
+          {
+            "name": "repo",
+            "type": "git_repository *"
+          },
+          {
+            "name": "out",
+            "type": "std::vector<std::string> *"
+          }
+        ],
+        "type": "function",
+        "isManual": true,
+        "cFile": "generate/templates/manual/tree/get_all_filepaths.cc",
+        "isAsync": true,
+        "isPrototypeMethod": true,
+        "group": "tree",
+        "return": {
+          "type": "int",
+          "isErrorCode": true
+        }
       }
     },
     "groups": [
@@ -1266,6 +1292,12 @@
           "git_status_list_free",
           "git_status_list_get_perfdata",
           "git_status_list_new"
+        ]
+      ],
+      [
+        "tree",
+        [
+          "git_tree_get_all_filepaths"
         ]
       ],
       [
