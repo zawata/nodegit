@@ -8,6 +8,7 @@
     "electron_openssl_root%": "<!(node ./utils/getElectronOpenSSLRoot.js <(module_root_dir))",
     "electron_openssl_static%": "<!(node -p \"process.platform !== 'linux' || process.env.NODEGIT_OPENSSL_STATIC_LINK === '1' ? 1 : 0\")",
     "cxx_version%": "<!(node ./utils/defaultCxxStandard.js <(target))",
+    "sanitize%": "none",
     "has_cxxflags%": "<!(node -p \"process.env.CXXFLAGS ? 1 : 0\")",
     "macOS_deployment_target": "10.11"
   },
@@ -179,6 +180,24 @@
         }],
         ["OS=='linux' or OS.endswith('bsd') or <(is_IBMi) == 1", {
           "conditions": [
+            ["'<(sanitize)' != 'none'", {
+              "cflags_cc": [
+                "-fsanitize=<(sanitize)",
+                "-fno-omit-frame-pointer",
+              ],
+              "ldflags": [
+                "-fsanitize=<(sanitize)",
+                "-fno-omit-frame-pointer",
+              ]
+            }],
+            ["'<(sanitize)' == 'address'", {
+              "cflags_cc": [
+                "-fsanitize-address-use-after-scope"
+              ],
+              "ldflags": [
+                "-fsanitize-address-use-after-scope"
+              ]
+            }],
             ["<(has_cxxflags) == 0", {
               "cflags_cc": [
                 "-std=c++<(cxx_version)"
