@@ -9,8 +9,36 @@
     "electron_openssl_static%": "<!(node -p \"process.platform !== 'linux' || process.env.NODEGIT_OPENSSL_STATIC_LINK === '1' ? 1 : 0\")",
     "cxx_version%": "<!(node ./utils/defaultCxxStandard.js <(target))",
     "sanitize%": "none",
+    "win_asan_lib_arch%": "<!(node -p \"os.arch() == 'x64' ? 'x86_64' : 'i386'\")",
+    "win_asan_lib_dir_arch%": "<!(node -p \"os.arch() == 'x64' ? 'x64' : '.'\")",
     "has_cxxflags%": "<!(node -p \"process.env.CXXFLAGS ? 1 : 0\")",
     "macOS_deployment_target": "10.11"
+  },
+
+  "target_defaults": {
+    "configurations": {
+      "Debug": {
+        "defines": [ "DEBUG", "_DEBUG" ],
+        "msvs_settings": {
+          "VCCLCompilerTool": {
+            "RuntimeLibrary": "MultiThreadedDebug"
+          }
+        }
+      },
+      "Release": {
+        "defines": [ "NDEBUG" ],
+        "msvs_settings": {
+          "VCCLCompilerTool": {
+            "RuntimeLibrary": "MultiThreaded"
+          }
+        }
+      }
+    },
+    "msvs_settings": {
+      "VCLinkerTool": {
+        "GenerateDebugInformation": "true"
+      }
+    }
   },
 
   "targets": [
@@ -36,7 +64,9 @@
         "action_name": "configure",
         "action": ["node", "utils/configureLibssh2.js"],
         "inputs": [""],
-        "outputs": [""]
+        "outputs": [
+          "vendor/libssh2/src/libssh2_config.h"
+        ]
       }],
       "hard_dependencies": [
         "acquireOpenSSL"
@@ -105,13 +135,13 @@
               "libraries": [
                 "-lgcov"
               ]
-            },
+            }
           }
         ],
         [
           "OS=='mac'", {
             "libraries": [
-              "-liconv",
+              "-liconv"
             ],
             "conditions": [
               ["<(is_electron) == 1", {
@@ -127,8 +157,8 @@
             "xcode_settings": {
               "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
               "MACOSX_DEPLOYMENT_TARGET": "<(macOS_deployment_target)",
-              'CLANG_CXX_LIBRARY': 'libc++',
-              'CLANG_CXX_LANGUAGE_STANDARD':'c++<(cxx_version)',
+              "CLANG_CXX_LIBRARY": "libc++",
+              "CLANG_CXX_LANGUAGE_STANDARD":"c++<(cxx_version)",
 
               "WARNING_CFLAGS": [
                 "-Wno-unused-variable",
@@ -139,40 +169,58 @@
             }
           }
         ],
-        [
-          "OS=='win'", {
-            "conditions": [
-              ["<(is_electron) == 1", {
-                "include_dirs": ["<(electron_openssl_root)/include"],
-                "libraries": [
-                  "<(electron_openssl_root)/lib/libcrypto.lib",
-                  "<(electron_openssl_root)/lib/libssl.lib"
-                ]
-              }]
-            ],
-            "defines": [
-              "_HAS_EXCEPTIONS=1"
-            ],
-            "msvs_settings": {
-              "VCCLCompilerTool": {
-                "AdditionalOptions": [
-                  "/std:c++<(cxx_version)",
-                  "/EHsc"
-                ]
-              },
-              "VCLinkerTool": {
-                "AdditionalOptions": [
-                  "/FORCE:MULTIPLE"
-                ]
+        ["OS=='win'", {
+          "conditions": [
+            ["<(is_electron) == 1", {
+              "include_dirs": ["<(electron_openssl_root)/include"],
+              "libraries": [
+                "<(electron_openssl_root)/lib/libcrypto.lib",
+                "<(electron_openssl_root)/lib/libssl.lib"
+              ]
+            }],
+            ["'<(sanitize)' == 'address'", {
+              "defines": [
+                # https://github.com/llvm/llvm-project/issues/56300
+                "_DISABLE_VECTOR_ANNOTATION",
+                "_DISABLE_STRING_ANNOTATION"
+              ],
+              "libraries": [
+                "clang_rt.asan_dll_thunk-<(win_asan_lib_arch).lib"
+              ],
+              "msvs_settings": {
+                "VCCLCompilerTool": {
+                  "AdditionalOptions": [
+                    "/fsanitize=address"
+                  ]
+                },
+                "VCLinkerTool": {
+                  "AdditionalOptions": [
+                    # TODO: demagic
+                    "/LIBPATH:\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\<(win_asan_lib_dir_arch)\\lib\\clang\\14.0.5\\lib\\windows\"",
+                  ]
+                }
               }
+            }]
+          ],
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "AdditionalOptions": [
+                "/std:c++<(cxx_version)",
+                "/EHsc"
+              ]
             },
-            "libraries": [
-              "winhttp.lib",
-              "crypt32.lib",
-              "rpcrt4.lib"
-            ]
-          }
-        ],
+            "VCLinkerTool": {
+              "AdditionalOptions": [
+                "/FORCE:MULTIPLE"
+              ]
+            }
+          },
+          "libraries": [
+            "winhttp.lib",
+            "crypt32.lib",
+            "rpcrt4.lib"
+          ]
+        }],
         ["OS=='mac' or OS=='linux' or OS.endswith('bsd') or <(is_IBMi) == 1", {
           "libraries": [
             "<!(krb5-config gssapi --libs)"
@@ -183,11 +231,11 @@
             ["'<(sanitize)' != 'none'", {
               "cflags_cc": [
                 "-fsanitize=<(sanitize)",
-                "-fno-omit-frame-pointer",
+                "-fno-omit-frame-pointer"
               ],
               "ldflags": [
                 "-fsanitize=<(sanitize)",
-                "-fno-omit-frame-pointer",
+                "-fno-omit-frame-pointer"
               ]
             }],
             ["'<(sanitize)' == 'address'", {
@@ -201,7 +249,7 @@
             ["<(has_cxxflags) == 0", {
               "cflags_cc": [
                 "-std=c++<(cxx_version)"
-              ],
+              ]
             }],
             ["<(is_electron) == 1 and <(electron_openssl_static) == 1", {
               "include_dirs": [
@@ -219,7 +267,7 @@
                 "-lssl"
               ]
             }]
-          ],
+          ]
         }],
         [
           "<(is_IBMi) == 1", {

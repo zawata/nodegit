@@ -124,7 +124,10 @@ module.exports = function generateNativeCode() {
     return fse.copy(path.resolve(__dirname, "../templates/manual/src"), tempSrcDirPath);
   }).then(function() {
     // Write out single purpose templates.
-    utils.writeLocalFile("../binding.gyp", beautify(templates.binding.render(enabled)), "binding.gyp");
+
+    //binding.gyp doesn't get beautified because the beautifier reflows python-style comments in ways that cause formatting errors
+    // the downside of this is that the file list is indented weirdly
+    utils.writeLocalFile("../binding.gyp", templates.binding.render(enabled), "binding.gyp");
     utils.writeFile(path.join(tempSrcDirPath, "nodegit.cc"), templates.nodegitCC.render(enabled), "nodegit.cc");
     utils.writeLocalFile("../lib/nodegit.js", beautify(templates.nodegitJS.render(enabled)), "nodegit.js");
     // Write out all the classes.
