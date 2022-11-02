@@ -44,7 +44,7 @@
     "got": "^10.7.0",
     "json5": "^2.1.0",
     "lodash": "^4.17.14",
-    "nan": "^2.15.0",
+    "nan": "https://github.com/zawata/nan#061cc38313c57441c4cf915ffc0f0b9019c9b065",
     "node-gyp": "^8.4.1",
     "ramda": "^0.25.0",
     "tar-fs": "^1.16.3"
