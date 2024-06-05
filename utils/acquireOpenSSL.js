@@ -6,6 +6,7 @@ const fsNonPromise = require("fs");
 const { promises: fs } = fsNonPromise;
 const path = require("path");
 const got = require("got");
+const os = require('os');
 const { performance } = require("perf_hooks");
 const { promisify } = require("util");
 const stream = require("stream");
@@ -16,11 +17,31 @@ const pipeline = promisify(stream.pipeline);
 
 const packageJson = require('../package.json')
 
-const OPENSSL_VERSION = "1.1.1t";
+const OPENSSL_VERSION = "1.1.1w";
 const win32BatPath = path.join(__dirname, "build-openssl.bat");
 const vendorPath = path.resolve(__dirname, "..", "vendor");
 const opensslPatchPath = path.join(vendorPath, "patches", "openssl");
 const extractPath = path.join(vendorPath, "openssl");
+
+const convertArch = (archStr) => {
+  const convertedArch = {
+    'ia32': 'x86',
+    'x86': 'x86',
+    'x64': 'x64',
+    'arm64': 'arm64'
+  }[archStr];
+
+  if (!convertedArch) {
+    throw new Error('unsupported architecture');
+  }
+
+  return convertedArch;
+}
+
+const hostArch = convertArch(process.arch);
+const targetArch = process.env.npm_config_arch
+  ? convertArch(process.env.npm_config_arch)
+  : hostArch;
 
 const pathsToIncludeForPackage = [
   "include", "lib"
@@ -79,7 +100,7 @@ const buildDarwin = async (buildCwd, macOsDeploymentTarget) => {
   }
 
   const arguments = [
-    process.arch === "x64" ? "darwin64-x86_64-cc" : "darwin64-arm64-cc",
+    targetArch === "x64" ? "darwin64-x86_64-cc" : "darwin64-arm64-cc",
     // speed up ecdh on little-endian platforms with 128bit int support
     "enable-ec_nistp_64_gcc_128",
     // compile static libraries
@@ -168,12 +189,15 @@ const buildWin32 = async (buildCwd, vsBuildArch) => {
     throw new Error("Expected vsBuildArch to be specified");
   }
 
-  const programFilesPath = (process.arch === "x64"
+  console.log(process.env);
+  const programFilesPath = (hostArch === "x64"
     ? process.env["ProgramFiles(x86)"]
     : process.env.ProgramFiles) || "C:\\Program Files";
-  const vcvarsallPath = process.env.npm_config_vcvarsall_path || `${
-    programFilesPath
-  }\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsall.bat`;
+
+  const msvsPath = process.env.GYP_MSVS_OVERRIDE_PATH
+    ?? path.join(programFilesPath, 'Microsoft Visual Studio', '2019', 'BuildTools');
+  const vcvarsallPath = process.env.npm_config_vcvarsall_path
+    ?? path.join(msvsPath, 'VC', 'Auxiliary', 'Build', 'vcvarsall.bat');
   try {
     await fs.stat(vcvarsallPath);
   } catch {
@@ -189,6 +213,11 @@ const buildWin32 = async (buildCwd, vsBuildArch) => {
 
     case "x86": {
       vcTarget = "VC-WIN32";
+      break;
+    }
+
+    case "arm64": {
+      vcTarget = "VC-WIN64-ARM";
       break;
     }
       
@@ -342,14 +371,7 @@ const downloadOpenSSLIfNecessary = async ({
 }
 
 const getOpenSSLPackageName = () => {
-  let arch = process.arch;
-  if (process.platform === "win32" && (
-    process.arch === "ia32" || process.env.NODEGIT_VS_BUILD_ARCH === "x86"
-  )) {
-    arch = "x86";
-  }
-
-  return `openssl-${OPENSSL_VERSION}-${process.platform}-${arch}.tar.gz`;
+  return `openssl-${OPENSSL_VERSION}-${process.platform}-${targetArch}.tar.gz`;
 }
 
 const getOpenSSLPackageUrl = () => `${packageJson.binary.host}${getOpenSSLPackageName()}`;
@@ -368,8 +390,8 @@ const buildPackage = async () => {
         return path.extname(name) === ".pc"
           || path.basename(name) === "pkgconfig";
       },
-      dmode: 0755,
-      fmode: 0644
+      dmode: 0o0755,
+      fmode: 0o0644
     }),
     zlib.createGzip(),
     new HashVerify("sha256", (digest) => {
@@ -409,10 +431,7 @@ const acquireOpenSSL = async () => {
 
     let vsBuildArch;
     if (process.platform === "win32") {
-      vsBuildArch = process.env.NODEGIT_VS_BUILD_ARCH || (process.arch === "x64" ? "x64" : "x86");
-      if (!["x64", "x86"].includes(vsBuildArch)) {
-        throw new Error(`Invalid vsBuildArch: ${vsBuildArch}`);
-      }
+      vsBuildArch = targetArch;
     }
 
     await buildOpenSSLIfNecessary({
