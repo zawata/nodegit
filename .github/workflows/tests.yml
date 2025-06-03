@@ -5,6 +5,7 @@ on:
       - backport/*
     tags:
       - v*.*.*
+      - v*.*.*-alpha.*
   pull_request:
 
 name: Testing
@@ -179,3 +180,44 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.node_pre_gyp_accessKeyId }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.node_pre_gyp_secretAccessKey }}
         run: node-pre-gyp publish
+
+  Release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref_type == 'tag' && success()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Check Version
+        run: |
+          TAG_VERSION=$(echo "${{ github.ref_name }}" | sed 's/v//')
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match package version ($PACKAGE_VERSION)."
+            exit 1
+          fi
+      # - name: Install
+      #   run: npm ci
+      # - name: publish
+      #   if: github.ref_type == 'tag'
+      #   run: |
+      #     npm config set '//registry.npmjs.org/:_authToken' "${{ secrets.NPM_TOKEN }}"
+      #     npm publish --access public --dry-run
+      - name: Create Release Notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              --draft \
+              ${{ contains(github.ref_name, '-alpha.') && ' --prerelease' || '' }} \
+              --generate-notes
